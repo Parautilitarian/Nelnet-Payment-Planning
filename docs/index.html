@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pay Now vs Pay Later</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: 600;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.25rem;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1.5rem;
+        padding: 0.6rem 1.2rem;
+        cursor: pointer;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 1rem;
+        overflow: auto;
+      }
+      .hint {
+        color: #555;
+        font-size: 0.9rem;
+        font-weight: 400;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 0.5rem;
+        text-align: left;
+      }
+      .error {
+        color: crimson;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Pay Now vs Pay Later</h1>
+    <p>Compare paying in full today vs a Nelnet-style installment plan.</p>
+
+    <form id="compare-form">
+      <label>
+        Principal ($)
+        <input
+          type="number"
+          name="principal"
+          value="10000"
+          min="0.01"
+          step="0.01"
+          required
+        />
+      </label>
+
+      <label>
+        Valuation date
+        <input type="date" name="valuation_date" required />
+      </label>
+
+      <label>
+        Pay-now date
+        <input type="date" name="pay_now_date" required />
+      </label>
+
+      <label>
+        Installment dates
+        <span class="hint">One ISO date per line (YYYY-MM-DD)</span>
+        <textarea name="payment_dates" rows="4" required>
+2025-07-05
+2025-08-05
+2025-09-05
+2025-10-05</textarea
+        >
+      </label>
+
+      <label>
+        Discount rate (%)
+        <span class="hint">Your opportunity-cost / risk-free rate</span>
+        <input
+          type="number"
+          name="discount_rate_pct"
+          value="4.5"
+          min="0"
+          step="0.01"
+          required
+        />
+      </label>
+
+      <label>
+        Plan interest rate (%)
+        <span class="hint">Pay-later plan rate</span>
+        <input
+          type="number"
+          name="annual_interest_rate_pct"
+          value="5"
+          min="0"
+          step="0.01"
+          required
+        />
+      </label>
+
+      <label>
+        Setup fee ($)
+        <input type="number" name="setup_fee" value="40" min="0" step="0.01" />
+      </label>
+
+      <label>
+        Setup fee date
+        <span class="hint">Leave blank to use valuation date</span>
+        <input type="date" name="setup_fee_date" />
+      </label>
+
+      <details>
+        <summary>Optional: provider schedule (amount + date pairs)</summary>
+        <label>
+          Amounts (one per line)
+          <textarea
+            name="pay_later_amounts"
+            rows="4"
+            placeholder="40&#10;2540&#10;2530"
+          ></textarea>
+        </label>
+        <label>
+          Provider dates (one per line)
+          <textarea
+            name="pay_later_dates"
+            rows="4"
+            placeholder="2025-06-05&#10;2025-07-05"
+          ></textarea>
+        </label>
+      </details>
+
+      <button type="submit">Compare</button>
+    </form>
+
+    <div id="results"></div>
+
+    <script type="module">
+      import { compareFromForm } from "./js/payment-comparison.js";
+
+      const form = document.getElementById("compare-form");
+      const results = document.getElementById("results");
+
+      const today = new Date().toISOString().slice(0, 10);
+      form.valuation_date.value = today;
+      form.pay_now_date.value = today;
+
+      function lines(value) {
+        return value
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+      }
+
+      function renderResult(data) {
+        const scheduleRows = data.pay_later_schedule
+          .map(
+            (row) =>
+              `<tr><td>${row.date}</td><td>$${row.amount.toFixed(2)}</td></tr>`
+          )
+          .join("");
+
+        results.innerHTML = `
+          <h2>Result</h2>
+          <p><strong>Better option:</strong> ${data.better_option.replace("_", " ")}</p>
+          <p><strong>PV if pay now:</strong> $${data.pv_pay_now.toFixed(2)}</p>
+          <p><strong>PV if pay later:</strong> $${data.pv_pay_later.toFixed(2)}</p>
+          <p><strong>Gain if pay now:</strong> $${data.gain_if_pay_now.toFixed(2)}</p>
+          <p><strong>Gain if pay later:</strong> $${data.gain_if_pay_later.toFixed(2)}</p>
+          <h3>Pay-later schedule</h3>
+          <table>
+            <thead><tr><th>Date</th><th>Amount</th></tr></thead>
+            <tbody>${scheduleRows}</tbody>
+          </table>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const payload = {
+          principal: Number(form.principal.value),
+          valuation_date: form.valuation_date.value,
+          pay_now_date: form.pay_now_date.value,
+          payment_dates: lines(form.payment_dates.value),
+          discount_rate: Number(form.discount_rate_pct.value) / 100,
+          annual_interest_rate:
+            Number(form.annual_interest_rate_pct.value) / 100,
+          setup_fee: Number(form.setup_fee.value || 0),
+        };
+
+        if (form.setup_fee_date.value) {
+          payload.setup_fee_date = form.setup_fee_date.value;
+        }
+
+        const providerAmounts = lines(form.pay_later_amounts.value).map(Number);
+        const providerDates = lines(form.pay_later_dates.value);
+        if (providerAmounts.length || providerDates.length) {
+          payload.pay_later_amounts = providerAmounts;
+          payload.pay_later_dates = providerDates;
+        }
+
+        try {
+          renderResult(compareFromForm(payload));
+        } catch (error) {
+          results.innerHTML = `<p class="error">${error.message}</p>`;
+        }
+      });
+    </script>
+  </body>
+</html>
