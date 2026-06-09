@@ -15,10 +15,42 @@ export function yearFraction(start, end, dayCount = 365) {
   return (end.getTime() - start.getTime()) / (dayCount * msPerDay);
 }
 
+/** @param {Date} a @param {Date} b */
+function isBefore(a, b) {
+  return a.getTime() < b.getTime();
+}
+
+/** @param {Date[]} paymentDates @param {Date} payNowDate */
+export function validatePaymentDates(paymentDates, payNowDate) {
+  if (!paymentDates.length) {
+    throw new Error("At least one installment date is required.");
+  }
+
+  for (const [index, payDate] of paymentDates.entries()) {
+    if (isBefore(payDate, payNowDate)) {
+      const label = index === 0 ? "The first installment" : `Installment ${index + 1}`;
+      throw new Error(
+        `${label} cannot be before the pay-now date. The first installment may be on the same day.`
+      );
+    }
+  }
+}
+
+/** @param {Date[]} flowDates @param {Date} payNowDate @param {string} label */
+function validateFlowDates(flowDates, payNowDate, label) {
+  for (const [index, flowDate] of flowDates.entries()) {
+    if (isBefore(flowDate, payNowDate)) {
+      throw new Error(
+        `${label} date ${index + 1} cannot be before the pay-now date.`
+      );
+    }
+  }
+}
+
 /** @param {number} amount @param {Date} flowDate @param {Date} valuationDate @param {number} annualRate */
 export function pvCashFlow(amount, flowDate, valuationDate, annualRate) {
-  if (flowDate < valuationDate) {
-    throw new Error("flow_date must be on or after the pay-now date.");
+  if (isBefore(flowDate, valuationDate)) {
+    throw new Error("Cash flow dates must be on or after the pay-now date.");
   }
   const t = yearFraction(valuationDate, flowDate);
   return amount / (1 + annualRate) ** t;
@@ -58,16 +90,13 @@ export function buildPayLaterSchedule(
   setupFeeDate = null,
   valuationDate = null
 ) {
-  if (!paymentDates.length) {
-    throw new Error("payment_dates cannot be empty.");
-  }
+  const valDate = valuationDate ?? paymentDates[0];
+  validatePaymentDates(paymentDates, valDate);
 
   const sortedDates = [...paymentDates].sort((a, b) => a - b);
-  const valDate = valuationDate ?? sortedDates[0];
   const feeDate = setupFeeDate ?? valDate;
-
-  if (sortedDates.some((d) => d < valDate)) {
-    throw new Error("All payment dates must be on or after the pay-now date.");
+  if (setupFee && isBefore(feeDate, valDate)) {
+    throw new Error("Setup fee date cannot be before the pay-now date.");
   }
 
   /** @type {number[]} */
@@ -245,11 +274,28 @@ export function compareFromForm(input) {
   }
 
   const payNowDate = parseDate(input.pay_now_date);
+  const paymentDates = input.payment_dates.map(parseDate);
+  validatePaymentDates(paymentDates, payNowDate);
+
+  if (input.setup_fee_date) {
+    const setupFeeDate = parseDate(input.setup_fee_date);
+    if (isBefore(setupFeeDate, payNowDate)) {
+      throw new Error("Setup fee date cannot be before the pay-now date.");
+    }
+  }
+
+  if (input.pay_later_dates?.length) {
+    validateFlowDates(
+      input.pay_later_dates.map(parseDate),
+      payNowDate,
+      "Provider schedule"
+    );
+  }
 
   const result = comparePayNowVsLater({
     principal: effectivePrincipal,
     payNowDate,
-    paymentDates: input.payment_dates.map(parseDate),
+    paymentDates,
     valuationDate: payNowDate,
     discountRate: input.discount_rate,
     annualInterestRate: input.annual_interest_rate,

@@ -246,8 +246,30 @@
           .filter(Boolean);
       }
 
+      function syncInstallmentDates() {
+        const count = Math.max(1, Number(form.installment_count.value) || 1);
+        const payNowDate = form.pay_now_date.value;
+        const inputs = installmentDatesEl.querySelectorAll('input[type="date"]');
+
+        if (!inputs.length) {
+          buildInstallmentDates();
+          return;
+        }
+
+        if (inputs[0]) {
+          inputs[0].value = payNowDate;
+        }
+
+        for (let i = 1; i < count; i++) {
+          if (inputs[i]) {
+            inputs[i].value = addMonths(payNowDate, i);
+          }
+        }
+      }
+
       form.installment_count.addEventListener("input", buildInstallmentDates);
-      form.pay_now_date.addEventListener("change", buildInstallmentDates);
+      form.pay_now_date.addEventListener("input", syncInstallmentDates);
+      form.pay_now_date.addEventListener("change", syncInstallmentDates);
       buildInstallmentDates();
 
       function lines(value) {
