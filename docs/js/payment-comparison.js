@@ -232,16 +232,31 @@ export function comparePayNowVsLater({
     gain_if_pay_later: gainIfPayLater,
     better_option:
       gainIfPayNow > 0 ? "pay_now" : gainIfPayLater > 0 ? "pay_later" : "tie",
-    pay_later_schedule: scheduleAmounts.map((amount, index) => ({
-      date: formatDate(scheduleDates[index]),
-      amount: Math.round(amount * 100) / 100,
-    })),
+    pay_later_schedule: combineScheduleByDate(scheduleAmounts, scheduleDates),
   };
 }
 
 /** @param {Date} date */
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
+}
+
+/** @param {number[]} amounts @param {Date[]} dates @returns {ScheduleRow[]} */
+function combineScheduleByDate(amounts, dates) {
+  /** @type {Map<string, number>} */
+  const byDate = new Map();
+
+  for (let i = 0; i < amounts.length; i++) {
+    const dateKey = formatDate(dates[i]);
+    byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + amounts[i]);
+  }
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, amount]) => ({
+      date,
+      amount: Math.round(amount * 100) / 100,
+    }));
 }
 
 /**

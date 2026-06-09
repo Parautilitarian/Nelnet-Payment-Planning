@@ -286,6 +286,12 @@
         });
       }
 
+      function formatBetterOption(option) {
+        if (option === "pay_now") return "Pay Now is the better option";
+        if (option === "pay_later") return "Pay Later is the better option";
+        return "Both options are equal";
+      }
+
       function renderResult(data) {
         const scheduleRows = data.pay_later_schedule
           .map(
@@ -294,16 +300,19 @@
           )
           .join("");
 
+        const payLaterDelta = data.gain_if_pay_later;
+        const payLaterLabel =
+          payLaterDelta < 0 ? "Loss if pay later" : "Gain if pay later";
+        const payLaterAmount = formatMoney(Math.abs(payLaterDelta));
+
         results.innerHTML = `
-          <h2>Result</h2>
+          <h2>Result: ${formatBetterOption(data.better_option)}</h2>
           <p><strong>Principal:</strong> $${formatMoney(data.principal)}</p>
           <p><strong>Scholarship (${data.scholarship_pct}%):</strong> −$${formatMoney(data.scholarship_amount)}</p>
           <p><strong>Amount compared:</strong> $${formatMoney(data.effective_principal)}</p>
-          <p><strong>Better option:</strong> ${data.better_option.replace("_", " ")}</p>
           <p><strong>PV if pay now:</strong> $${formatMoney(data.pv_pay_now)}</p>
           <p><strong>PV if pay later:</strong> $${formatMoney(data.pv_pay_later)}</p>
-          <p><strong>Gain if pay now:</strong> $${formatMoney(data.gain_if_pay_now)}</p>
-          <p><strong>Gain if pay later:</strong> $${formatMoney(data.gain_if_pay_later)}</p>
+          <p><strong>${payLaterLabel}:</strong> $${payLaterAmount}</p>
           <h3>Pay-later schedule</h3>
           <table>
             <thead><tr><th>Date</th><th>Amount</th></tr></thead>
