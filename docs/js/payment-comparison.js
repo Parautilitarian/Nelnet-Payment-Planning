@@ -18,7 +18,7 @@ export function yearFraction(start, end, dayCount = 365) {
 /** @param {number} amount @param {Date} flowDate @param {Date} valuationDate @param {number} annualRate */
 export function pvCashFlow(amount, flowDate, valuationDate, annualRate) {
   if (flowDate < valuationDate) {
-    throw new Error("flow_date must be on or after valuation_date.");
+    throw new Error("flow_date must be on or after the pay-now date.");
   }
   const t = yearFraction(valuationDate, flowDate);
   return amount / (1 + annualRate) ** t;
@@ -67,7 +67,7 @@ export function buildPayLaterSchedule(
   const feeDate = setupFeeDate ?? valDate;
 
   if (sortedDates.some((d) => d <= valDate)) {
-    throw new Error("All payment dates must be after valuation_date.");
+    throw new Error("All payment dates must be after the pay-now date.");
   }
 
   /** @type {number[]} */
@@ -233,11 +233,24 @@ export function compareFromForm(input) {
     }
   }
 
-  return comparePayNowVsLater({
-    principal: input.principal,
-    payNowDate: parseDate(input.pay_now_date),
+  const scholarshipPct = input.scholarship_pct ?? 0;
+  if (scholarshipPct < 0 || scholarshipPct > 100) {
+    throw new Error("Scholarship must be between 0% and 100%.");
+  }
+
+  const scholarshipAmount = input.principal * (scholarshipPct / 100);
+  const effectivePrincipal = input.principal - scholarshipAmount;
+  if (effectivePrincipal <= 0) {
+    throw new Error("Scholarship leaves no principal to compare.");
+  }
+
+  const payNowDate = parseDate(input.pay_now_date);
+
+  const result = comparePayNowVsLater({
+    principal: effectivePrincipal,
+    payNowDate,
     paymentDates: input.payment_dates.map(parseDate),
-    valuationDate: parseDate(input.valuation_date),
+    valuationDate: payNowDate,
     discountRate: input.discount_rate,
     annualInterestRate: input.annual_interest_rate,
     setupFee: input.setup_fee ?? 0,
@@ -245,4 +258,13 @@ export function compareFromForm(input) {
     payLaterAmounts: input.pay_later_amounts ?? null,
     payLaterDates: input.pay_later_dates?.map(parseDate) ?? null,
   });
+
+  return {
+    ...result,
+    principal: input.principal,
+    scholarship_pct: scholarshipPct,
+    scholarship_amount: Math.round(scholarshipAmount * 100) / 100,
+    effective_principal: Math.round(effectivePrincipal * 100) / 100,
+    valuation_date: input.pay_now_date,
+  };
 }
