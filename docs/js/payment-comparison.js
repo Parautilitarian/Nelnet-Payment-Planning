@@ -125,6 +125,18 @@ export function buildPayLaterSchedule(
   return { amounts, dates };
 }
 
+/** @param {number[]} amounts @param {Date[]} dates @param {number} setupFee @param {Date | null} setupFeeDate @param {Date} valuationDate */
+function withSetupFee(amounts, dates, setupFee, setupFeeDate, valuationDate) {
+  if (!setupFee) {
+    return { amounts, dates };
+  }
+  const feeDate = setupFeeDate ?? valuationDate;
+  return {
+    amounts: [setupFee, ...amounts],
+    dates: [feeDate, ...dates],
+  };
+}
+
 /**
  * @param {object} params
  * @param {number} params.principal
@@ -162,6 +174,16 @@ export function payLaterPv({
     );
     scheduleAmounts = built.amounts;
     scheduleDates = built.dates;
+  } else {
+    const withFee = withSetupFee(
+      scheduleAmounts,
+      scheduleDates,
+      setupFee,
+      setupFeeDate,
+      valuationDate
+    );
+    scheduleAmounts = withFee.amounts;
+    scheduleDates = withFee.dates;
   }
 
   return pvCashFlows(scheduleAmounts, scheduleDates, valuationDate, discountRate);
@@ -221,6 +243,16 @@ export function comparePayNowVsLater({
     );
     scheduleAmounts = built.amounts;
     scheduleDates = built.dates;
+  } else {
+    const withFee = withSetupFee(
+      scheduleAmounts,
+      scheduleDates,
+      setupFee,
+      setupFeeDate,
+      valuationDate
+    );
+    scheduleAmounts = withFee.amounts;
+    scheduleDates = withFee.dates;
   }
 
   return {
@@ -264,15 +296,10 @@ function combineScheduleByDate(amounts, dates) {
  * @param {object} input
  */
 export function compareFromForm(input) {
-  if (input.pay_later_amounts?.length || input.pay_later_dates?.length) {
-    if (!input.pay_later_amounts?.length || !input.pay_later_dates?.length) {
+  if (input.installment_amounts?.length) {
+    if (input.installment_amounts.length !== input.payment_dates.length) {
       throw new Error(
-        "Provide both pay_later_amounts and pay_later_dates, or neither."
-      );
-    }
-    if (input.pay_later_amounts.length !== input.pay_later_dates.length) {
-      throw new Error(
-        "pay_later_amounts and pay_later_dates must match in length."
+        "Installment amounts and dates must match in length."
       );
     }
   }
@@ -299,25 +326,20 @@ export function compareFromForm(input) {
     }
   }
 
-  if (input.pay_later_dates?.length) {
-    validateFlowDates(
-      input.pay_later_dates.map(parseDate),
-      payNowDate,
-      "Provider schedule"
-    );
-  }
+  const installmentAmounts = input.installment_amounts ?? null;
+  const installmentDates = input.payment_dates.map(parseDate);
 
   const result = comparePayNowVsLater({
     principal: effectivePrincipal,
     payNowDate,
-    paymentDates,
+    paymentDates: installmentDates,
     valuationDate: payNowDate,
     discountRate: input.discount_rate,
     annualInterestRate: input.annual_interest_rate,
     setupFee: input.setup_fee ?? 0,
     setupFeeDate: input.setup_fee_date ? parseDate(input.setup_fee_date) : null,
-    payLaterAmounts: input.pay_later_amounts ?? null,
-    payLaterDates: input.pay_later_dates?.map(parseDate) ?? null,
+    payLaterAmounts: installmentAmounts,
+    payLaterDates: installmentAmounts ? installmentDates : null,
   });
 
   return {

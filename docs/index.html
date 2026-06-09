@@ -42,10 +42,10 @@
         padding: 0.6rem 1.2rem;
         cursor: pointer;
       }
-      pre {
-        background: #f4f4f4;
-        padding: 1rem;
-        overflow: auto;
+      .section-divider {
+        margin: 1.5rem 0;
+        border: none;
+        border-top: 1px solid #ccc;
       }
       .hint {
         color: #555;
@@ -85,6 +85,28 @@
       }
       .installment-dates label:first-child {
         margin-top: 0.25rem;
+      }
+      .installment-row {
+        margin-top: 0.75rem;
+      }
+      .installment-row-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      .installment-row-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+      .installment-row-fields label {
+        margin-top: 0;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      @media (max-width: 520px) {
+        .installment-row-fields {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -150,13 +172,17 @@
         />
       </label>
 
+      <hr class="section-divider" />
+
       <fieldset class="installment-fieldset">
         <legend data-i18n="installmentDatesLegend">Installment dates</legend>
         <p class="hint" data-i18n="installmentDatesHint">
-          First defaults to pay-now date; others are monthly
+          First defaults to pay-now date; others are monthly. Amounts default to an even split.
         </p>
         <div id="installment-dates" class="installment-dates"></div>
       </fieldset>
+
+      <hr class="section-divider" />
 
       <label>
         <span data-i18n="discountRate">Discount rate (%)</span>
@@ -200,30 +226,6 @@
         >
         <input type="date" name="setup_fee_date" />
       </label>
-
-      <details>
-        <summary data-i18n="optionalProviderSchedule">
-          Optional: provider schedule (amount + date pairs)
-        </summary>
-        <label>
-          <span data-i18n="amountsOnePerLine">Amounts (one per line)</span>
-          <textarea
-            name="pay_later_amounts"
-            rows="4"
-            placeholder="40&#10;2540&#10;2530"
-          ></textarea>
-        </label>
-        <label>
-          <span data-i18n="providerDatesOnePerLine"
-            >Provider dates (one per line)</span
-          >
-          <textarea
-            name="pay_later_dates"
-            rows="4"
-            placeholder="2025-06-05&#10;2025-07-05"
-          ></textarea>
-        </label>
-      </details>
 
       <button type="submit" data-i18n="compareButton">Compare</button>
     </form>
@@ -270,14 +272,22 @@
         return num.toLocaleString("en-US", { maximumFractionDigits: 2 });
       }
 
-      form.principal.addEventListener("blur", () => {
-        const amount = parseCurrency(form.principal.value);
-        if (!Number.isNaN(amount)) {
-          form.principal.value = formatCurrency(amount);
-        }
-      });
-
       const installmentDatesEl = document.getElementById("installment-dates");
+
+      function getEffectivePrincipal() {
+        const principal = parseCurrency(form.principal.value);
+        const scholarshipPct = Number(form.scholarship_pct.value) || 0;
+        return principal * (1 - scholarshipPct / 100);
+      }
+
+      function evenSplitAmounts(count, total) {
+        if (count <= 0) return [];
+        const per = Math.round((total / count) * 100) / 100;
+        const amounts = Array.from({ length: count }, () => per);
+        amounts[count - 1] =
+          Math.round((total - per * (count - 1)) * 100) / 100;
+        return amounts;
+      }
 
       function addMonths(isoDate, months) {
         const [year, month, day] = isoDate.split("-").map(Number);
@@ -286,35 +296,68 @@
           .slice(0, 10);
       }
 
+      function createInstallmentRow(index, dateValue, amountValue) {
+        const row = document.createElement("div");
+        row.className = "installment-row";
+
+        const title = document.createElement("div");
+        title.className = "installment-row-title";
+        title.textContent = t(currentLang, "installment", { n: index + 1 });
+
+        const fields = document.createElement("div");
+        fields.className = "installment-row-fields";
+
+        const dateLabel = document.createElement("label");
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.name = `payment_date_${index}`;
+        dateInput.value = dateValue;
+        dateInput.required = true;
+        dateLabel.append(t(currentLang, "installmentDate"), dateInput);
+
+        const amountLabel = document.createElement("label");
+        const amountInput = document.createElement("input");
+        amountInput.type = "text";
+        amountInput.name = `payment_amount_${index}`;
+        amountInput.inputMode = "decimal";
+        amountInput.value = formatCurrency(amountValue);
+        amountInput.required = true;
+        amountLabel.append(t(currentLang, "installmentAmount"), amountInput);
+
+        fields.append(dateLabel, amountLabel);
+        row.append(title, fields);
+        return row;
+      }
+
       function updateInstallmentLabels() {
-        const labels = installmentDatesEl.querySelectorAll("label");
-        labels.forEach((label, index) => {
-          const input = label.querySelector('input[type="date"]');
-          label.textContent = "";
-          label.append(
-            t(currentLang, "installment", { n: index + 1 }),
-            input
-          );
+        const rows = installmentDatesEl.querySelectorAll(".installment-row");
+        rows.forEach((row, index) => {
+          const title = row.querySelector(".installment-row-title");
+          const labels = row.querySelectorAll(".installment-row-fields label");
+          title.textContent = t(currentLang, "installment", { n: index + 1 });
+          if (labels[0]) {
+            const dateInput = labels[0].querySelector("input");
+            labels[0].textContent = "";
+            labels[0].append(t(currentLang, "installmentDate"), dateInput);
+          }
+          if (labels[1]) {
+            const amountInput = labels[1].querySelector("input");
+            labels[1].textContent = "";
+            labels[1].append(t(currentLang, "installmentAmount"), amountInput);
+          }
         });
       }
 
       function buildInstallmentDates() {
         const count = Math.max(1, Number(form.installment_count.value) || 1);
         const startDate = form.pay_now_date.value;
+        const amounts = evenSplitAmounts(count, getEffectivePrincipal());
 
         installmentDatesEl.replaceChildren();
         for (let i = 0; i < count; i++) {
-          const label = document.createElement("label");
-          const input = document.createElement("input");
-          input.type = "date";
-          input.name = `payment_date_${i}`;
-          input.value = addMonths(startDate, i);
-          input.required = true;
-          label.append(
-            t(currentLang, "installment", { n: i + 1 }),
-            input
+          installmentDatesEl.appendChild(
+            createInstallmentRow(i, addMonths(startDate, i), amounts[i])
           );
-          installmentDatesEl.appendChild(label);
         }
       }
 
@@ -324,38 +367,60 @@
           .filter(Boolean);
       }
 
+      function getInstallmentAmounts() {
+        return [...installmentDatesEl.querySelectorAll('input[name^="payment_amount_"]')]
+          .map((input) => parseCurrency(input.value))
+          .filter((value) => !Number.isNaN(value));
+      }
+
       function syncInstallmentDates() {
         const count = Math.max(1, Number(form.installment_count.value) || 1);
         const payNowDate = form.pay_now_date.value;
-        const inputs = installmentDatesEl.querySelectorAll('input[type="date"]');
+        const dateInputs = installmentDatesEl.querySelectorAll('input[type="date"]');
 
-        if (!inputs.length) {
+        if (!dateInputs.length) {
           buildInstallmentDates();
           return;
         }
 
-        if (inputs[0]) {
-          inputs[0].value = payNowDate;
+        if (dateInputs[0]) {
+          dateInputs[0].value = payNowDate;
         }
 
         for (let i = 1; i < count; i++) {
-          if (inputs[i]) {
-            inputs[i].value = addMonths(payNowDate, i);
+          if (dateInputs[i]) {
+            dateInputs[i].value = addMonths(payNowDate, i);
           }
         }
+      }
+
+      function redistributeDefaultAmounts() {
+        const amounts = evenSplitAmounts(
+          Math.max(1, Number(form.installment_count.value) || 1),
+          getEffectivePrincipal()
+        );
+        const amountInputs = installmentDatesEl.querySelectorAll(
+          'input[name^="payment_amount_"]'
+        );
+        amountInputs.forEach((input, index) => {
+          if (amounts[index] !== undefined) {
+            input.value = formatCurrency(amounts[index]);
+          }
+        });
       }
 
       form.installment_count.addEventListener("input", buildInstallmentDates);
       form.pay_now_date.addEventListener("input", syncInstallmentDates);
       form.pay_now_date.addEventListener("change", syncInstallmentDates);
+      form.scholarship_pct.addEventListener("input", redistributeDefaultAmounts);
+      form.principal.addEventListener("blur", () => {
+        const amount = parseCurrency(form.principal.value);
+        if (!Number.isNaN(amount)) {
+          form.principal.value = formatCurrency(amount);
+          redistributeDefaultAmounts();
+        }
+      });
       buildInstallmentDates();
-
-      function lines(value) {
-        return value
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean);
-      }
 
       function formatMoney(amount) {
         return amount.toLocaleString("en-US", {
@@ -403,7 +468,6 @@
             <thead><tr><th>${t(currentLang, "tableDate")}</th><th>${t(currentLang, "tableAmount")}</th></tr></thead>
             <tbody>${scheduleRows}</tbody>
           </table>
-          <pre>${JSON.stringify(data, null, 2)}</pre>
         `;
       }
 
@@ -415,6 +479,7 @@
           scholarship_pct: Number(form.scholarship_pct.value),
           pay_now_date: form.pay_now_date.value,
           payment_dates: getPaymentDates(),
+          installment_amounts: getInstallmentAmounts(),
           discount_rate: Number(form.discount_rate_pct.value) / 100,
           annual_interest_rate:
             Number(form.annual_interest_rate_pct.value) / 100,
@@ -423,13 +488,6 @@
 
         if (form.setup_fee_date.value) {
           payload.setup_fee_date = form.setup_fee_date.value;
-        }
-
-        const providerAmounts = lines(form.pay_later_amounts.value).map(Number);
-        const providerDates = lines(form.pay_later_dates.value);
-        if (providerAmounts.length || providerDates.length) {
-          payload.pay_later_amounts = providerAmounts;
-          payload.pay_later_dates = providerDates;
         }
 
         try {

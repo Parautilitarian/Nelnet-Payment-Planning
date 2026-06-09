@@ -20,7 +20,9 @@ export const strings = {
     payNowDate: "Pay-now date",
     installmentCount: "Number of installments",
     installmentDatesLegend: "Installment dates",
-    installmentDatesHint: "First defaults to pay-now date; others are monthly",
+    installmentDatesHint: "First defaults to pay-now date; others are monthly. Amounts default to an even split.",
+    installmentDate: "Date",
+    installmentAmount: "Amount ($)",
     discountRate: "Discount rate (%)",
     discountRateHint: "Your opportunity-cost / risk-free rate",
     planInterestRate: "Plan interest rate (%)",
@@ -28,9 +30,6 @@ export const strings = {
     setupFee: "Setup fee ($)",
     setupFeeDate: "Setup fee date",
     setupFeeDateHint: "Leave blank to use pay-now date",
-    optionalProviderSchedule: "Optional: provider schedule (amount + date pairs)",
-    amountsOnePerLine: "Amounts (one per line)",
-    providerDatesOnePerLine: "Provider dates (one per line)",
     compareButton: "Compare",
     installment: "Installment {n}",
     resultPayNowBetter: "Pay Now is the better option",
@@ -60,7 +59,9 @@ export const strings = {
     payNowDate: "一次性付款日期",
     installmentCount: "分期期数",
     installmentDatesLegend: "各期付款日期",
-    installmentDatesHint: "第一期默认为一次性付款日期；其余按月递增",
+    installmentDatesHint: "第一期默认为一次性付款日期；其余按月递增。金额默认为平均分配。",
+    installmentDate: "日期",
+    installmentAmount: "金额 ($)",
     discountRate: "贴现率 (%)",
     discountRateHint: "您的机会成本 / 无风险收益率",
     planInterestRate: "分期计划利率 (%)",
@@ -68,9 +69,6 @@ export const strings = {
     setupFee: "设置费 ($)",
     setupFeeDate: "设置费日期",
     setupFeeDateHint: "留空则使用一次性付款日期",
-    optionalProviderSchedule: "可选：提供商提供的付款计划（金额 + 日期）",
-    amountsOnePerLine: "金额（每行一个）",
-    providerDatesOnePerLine: "提供商日期（每行一个）",
     compareButton: "比较",
     installment: "第 {n} 期",
     resultPayNowBetter: "立即付款更划算",
@@ -100,7 +98,9 @@ export const strings = {
     payNowDate: "一次性付款日期",
     installmentCount: "分期期數",
     installmentDatesLegend: "各期付款日期",
-    installmentDatesHint: "第一期預設為一次性付款日期；其餘按月遞增",
+    installmentDatesHint: "第一期預設為一次性付款日期；其餘按月遞增。金額預設為平均分配。",
+    installmentDate: "日期",
+    installmentAmount: "金額 ($)",
     discountRate: "貼現率 (%)",
     discountRateHint: "您的機會成本 / 無風險收益率",
     planInterestRate: "分期計劃利率 (%)",
@@ -108,9 +108,6 @@ export const strings = {
     setupFee: "設定費 ($)",
     setupFeeDate: "設定費日期",
     setupFeeDateHint: "留空則使用一次性付款日期",
-    optionalProviderSchedule: "可選：提供商提供的付款計劃（金額 + 日期）",
-    amountsOnePerLine: "金額（每行一個）",
-    providerDatesOnePerLine: "提供商日期（每行一個）",
     compareButton: "比較",
     installment: "第 {n} 期",
     resultPayNowBetter: "立即付款更划算",
@@ -142,7 +139,9 @@ export const strings = {
     installmentCount: "Número de cuotas",
     installmentDatesLegend: "Fechas de las cuotas",
     installmentDatesHint:
-      "La primera coincide con la fecha de pago completo; las demás son mensuales",
+      "La primera coincide con la fecha de pago completo; las demás son mensuales. Los montos se dividen en partes iguales por defecto.",
+    installmentDate: "Fecha",
+    installmentAmount: "Monto ($)",
     discountRate: "Tasa de descuento (%)",
     discountRateHint: "Su costo de oportunidad / tasa libre de riesgo",
     planInterestRate: "Tasa de interés del plan (%)",
@@ -150,10 +149,6 @@ export const strings = {
     setupFee: "Tarifa de inscripción ($)",
     setupFeeDate: "Fecha de la tarifa de inscripción",
     setupFeeDateHint: "Dejar en blanco para usar la fecha de pago completo",
-    optionalProviderSchedule:
-      "Opcional: calendario del proveedor (montos + fechas)",
-    amountsOnePerLine: "Montos (uno por línea)",
-    providerDatesOnePerLine: "Fechas del proveedor (una por línea)",
     compareButton: "Comparar",
     installment: "Cuota {n}",
     resultPayNowBetter: "Pagar ahora es la mejor opción",
@@ -190,6 +185,8 @@ export const errorStrings = {
   "Scholarship must be between 0% and 100%.": "error.scholarshipRange",
   "Scholarship leaves no principal to compare.":
     "error.scholarshipZeroPrincipal",
+  "Installment amounts and dates must match in length.":
+    "error.installmentAmountLength",
 };
 
 /** @type {Record<string, Record<string, string>>} */
@@ -213,8 +210,9 @@ const errorMessages = {
     "error.scholarshipRange": "Scholarship must be between 0% and 100%.",
     "error.scholarshipZeroPrincipal":
       "Scholarship leaves no principal to compare.",
+    "error.installmentAmountLength":
+      "Installment amounts and dates must match in length.",
   },
-  "zh-Hans": {
     "error.installmentRequired": "至少需要一个分期付款日期。",
     "error.firstInstallmentBeforePayNow":
       "第一期不能早于一次性付款日期。第一期可以与一次性付款日期相同。",
@@ -232,6 +230,7 @@ const errorMessages = {
       "提供商金额和日期的行数必须一致。",
     "error.scholarshipRange": "奖学金比例须在 0% 至 100% 之间。",
     "error.scholarshipZeroPrincipal": "奖学金扣除后没有可比较的金额。",
+    "error.installmentAmountLength": "分期金额和日期的数量必须一致。",
   },
   "zh-Hant": {
     "error.installmentRequired": "至少需要一個分期付款日期。",
@@ -251,6 +250,7 @@ const errorMessages = {
       "提供商金額和日期的行數必須一致。",
     "error.scholarshipRange": "獎學金比例須在 0% 至 100% 之間。",
     "error.scholarshipZeroPrincipal": "獎學金扣除後沒有可比較的金額。",
+    "error.installmentAmountLength": "分期金額和日期的數量必須一致。",
   },
   es: {
     "error.installmentRequired": "Se requiere al menos una fecha de cuota.",
@@ -271,6 +271,8 @@ const errorMessages = {
     "error.scholarshipRange": "La beca debe estar entre 0% y 100%.",
     "error.scholarshipZeroPrincipal":
       "La beca deja ningún principal para comparar.",
+    "error.installmentAmountLength":
+      "Los montos y fechas de las cuotas deben coincidir en cantidad.",
   },
 };
 
