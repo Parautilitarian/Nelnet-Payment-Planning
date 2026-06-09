@@ -66,8 +66,8 @@ export function buildPayLaterSchedule(
   const valDate = valuationDate ?? sortedDates[0];
   const feeDate = setupFeeDate ?? valDate;
 
-  if (sortedDates.some((d) => d <= valDate)) {
-    throw new Error("All payment dates must be after the pay-now date.");
+  if (sortedDates.some((d) => d < valDate)) {
+    throw new Error("All payment dates must be on or after the pay-now date.");
   }
 
   /** @type {number[]} */

@@ -52,6 +52,26 @@
       .error {
         color: crimson;
       }
+      .installment-fieldset {
+        margin-top: 1rem;
+        padding: 0;
+        border: none;
+      }
+      .installment-fieldset legend {
+        font-weight: 600;
+        padding: 0;
+      }
+      .installment-fieldset .hint {
+        margin: 0.25rem 0 0;
+      }
+      .installment-dates label {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      .installment-dates label:first-child {
+        margin-top: 0.25rem;
+      }
     </style>
   </head>
   <body>
@@ -90,15 +110,23 @@
       </label>
 
       <label>
-        Installment dates
-        <span class="hint">One ISO date per line (YYYY-MM-DD)</span>
-        <textarea name="payment_dates" rows="4" required>
-2025-07-05
-2025-08-05
-2025-09-05
-2025-10-05</textarea
-        >
+        Number of installments
+        <input
+          type="number"
+          name="installment_count"
+          value="4"
+          min="1"
+          max="36"
+          step="1"
+          required
+        />
       </label>
+
+      <fieldset class="installment-fieldset">
+        <legend>Installment dates</legend>
+        <p class="hint">First defaults to pay-now date; others are monthly</p>
+        <div id="installment-dates" class="installment-dates"></div>
+      </fieldset>
 
       <label>
         Discount rate (%)
@@ -185,6 +213,43 @@
         }
       });
 
+      const installmentDatesEl = document.getElementById("installment-dates");
+
+      function addMonths(isoDate, months) {
+        const [year, month, day] = isoDate.split("-").map(Number);
+        return new Date(Date.UTC(year, month - 1 + months, day))
+          .toISOString()
+          .slice(0, 10);
+      }
+
+      function buildInstallmentDates() {
+        const count = Math.max(1, Number(form.installment_count.value) || 1);
+        const startDate = form.pay_now_date.value;
+
+        installmentDatesEl.replaceChildren();
+        for (let i = 0; i < count; i++) {
+          const label = document.createElement("label");
+          label.textContent = `Installment ${i + 1}`;
+          const input = document.createElement("input");
+          input.type = "date";
+          input.name = `payment_date_${i}`;
+          input.value = addMonths(startDate, i);
+          input.required = true;
+          label.appendChild(input);
+          installmentDatesEl.appendChild(label);
+        }
+      }
+
+      function getPaymentDates() {
+        return [...installmentDatesEl.querySelectorAll('input[type="date"]')]
+          .map((input) => input.value)
+          .filter(Boolean);
+      }
+
+      form.installment_count.addEventListener("input", buildInstallmentDates);
+      form.pay_now_date.addEventListener("change", buildInstallmentDates);
+      buildInstallmentDates();
+
       function lines(value) {
         return value
           .split("\n")
@@ -233,7 +298,7 @@
           principal: parseCurrency(form.principal.value),
           scholarship_pct: Number(form.scholarship_pct.value),
           pay_now_date: form.pay_now_date.value,
-          payment_dates: lines(form.payment_dates.value),
+          payment_dates: getPaymentDates(),
           discount_rate: Number(form.discount_rate_pct.value) / 100,
           annual_interest_rate:
             Number(form.annual_interest_rate_pct.value) / 100,
