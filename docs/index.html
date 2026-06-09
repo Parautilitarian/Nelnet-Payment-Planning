@@ -11,6 +11,20 @@
         margin: 2rem auto;
         padding: 0 1rem;
       }
+      .lang-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .lang-bar label {
+        margin: 0;
+        font-weight: 600;
+      }
+      .lang-bar select {
+        padding: 0.35rem 0.5rem;
+      }
       label {
         display: block;
         margin-top: 1rem;
@@ -75,12 +89,24 @@
     </style>
   </head>
   <body>
-    <h1>Pay Now vs Pay Later</h1>
-    <p>Compare paying in full today vs a Nelnet-style installment plan.</p>
+    <div class="lang-bar">
+      <label for="language-select" data-i18n="languageLabel">Language</label>
+      <select id="language-select" aria-label="Language">
+        <option value="en">English</option>
+        <option value="zh-Hans">简体中文</option>
+        <option value="zh-Hant">繁體中文</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+
+    <h1 data-i18n="heading">Pay Now vs Pay Later</h1>
+    <p data-i18n="subtitle">
+      Compare paying in full today vs a Nelnet-style installment plan.
+    </p>
 
     <form id="compare-form">
       <label>
-        Principal ($)
+        <span data-i18n="principal">Principal ($)</span>
         <input
           type="text"
           name="principal"
@@ -91,8 +117,10 @@
       </label>
 
       <label>
-        Scholarship (%)
-        <span class="hint">Percentage of principal deducted before calculations</span>
+        <span data-i18n="scholarship">Scholarship (%)</span>
+        <span class="hint" data-i18n="scholarshipHint"
+          >Percentage of principal deducted before calculations</span
+        >
         <input
           type="number"
           name="scholarship_pct"
@@ -105,12 +133,12 @@
       </label>
 
       <label>
-        Pay-now date
+        <span data-i18n="payNowDate">Pay-now date</span>
         <input type="date" name="pay_now_date" value="2026-08-01" required />
       </label>
 
       <label>
-        Number of installments
+        <span data-i18n="installmentCount">Number of installments</span>
         <input
           type="number"
           name="installment_count"
@@ -123,14 +151,18 @@
       </label>
 
       <fieldset class="installment-fieldset">
-        <legend>Installment dates</legend>
-        <p class="hint">First defaults to pay-now date; others are monthly</p>
+        <legend data-i18n="installmentDatesLegend">Installment dates</legend>
+        <p class="hint" data-i18n="installmentDatesHint">
+          First defaults to pay-now date; others are monthly
+        </p>
         <div id="installment-dates" class="installment-dates"></div>
       </fieldset>
 
       <label>
-        Discount rate (%)
-        <span class="hint">Your opportunity-cost / risk-free rate</span>
+        <span data-i18n="discountRate">Discount rate (%)</span>
+        <span class="hint" data-i18n="discountRateHint"
+          >Your opportunity-cost / risk-free rate</span
+        >
         <input
           type="number"
           name="discount_rate_pct"
@@ -142,8 +174,10 @@
       </label>
 
       <label>
-        Plan interest rate (%)
-        <span class="hint">Pay-later plan rate</span>
+        <span data-i18n="planInterestRate">Plan interest rate (%)</span>
+        <span class="hint" data-i18n="planInterestRateHint"
+          >Pay-later plan rate</span
+        >
         <input
           type="number"
           name="annual_interest_rate_pct"
@@ -155,20 +189,24 @@
       </label>
 
       <label>
-        Setup fee ($)
+        <span data-i18n="setupFee">Setup fee ($)</span>
         <input type="number" name="setup_fee" value="40" min="0" step="0.01" />
       </label>
 
       <label>
-        Setup fee date
-        <span class="hint">Leave blank to use pay-now date</span>
+        <span data-i18n="setupFeeDate">Setup fee date</span>
+        <span class="hint" data-i18n="setupFeeDateHint"
+          >Leave blank to use pay-now date</span
+        >
         <input type="date" name="setup_fee_date" />
       </label>
 
       <details>
-        <summary>Optional: provider schedule (amount + date pairs)</summary>
+        <summary data-i18n="optionalProviderSchedule">
+          Optional: provider schedule (amount + date pairs)
+        </summary>
         <label>
-          Amounts (one per line)
+          <span data-i18n="amountsOnePerLine">Amounts (one per line)</span>
           <textarea
             name="pay_later_amounts"
             rows="4"
@@ -176,7 +214,9 @@
           ></textarea>
         </label>
         <label>
-          Provider dates (one per line)
+          <span data-i18n="providerDatesOnePerLine"
+            >Provider dates (one per line)</span
+          >
           <textarea
             name="pay_later_dates"
             rows="4"
@@ -185,16 +225,40 @@
         </label>
       </details>
 
-      <button type="submit">Compare</button>
+      <button type="submit" data-i18n="compareButton">Compare</button>
     </form>
 
     <div id="results"></div>
 
     <script type="module">
       import { compareFromForm } from "./js/payment-comparison.js";
+      import {
+        applyPageLanguage,
+        getLang,
+        setLang,
+        t,
+        translateError,
+      } from "./js/i18n.js";
 
       const form = document.getElementById("compare-form");
       const results = document.getElementById("results");
+      const languageSelect = document.getElementById("language-select");
+      let currentLang = getLang();
+      /** @type {object | null} */
+      let lastResult = null;
+
+      languageSelect.value = currentLang;
+      applyPageLanguage(currentLang);
+
+      languageSelect.addEventListener("change", () => {
+        currentLang = languageSelect.value;
+        setLang(currentLang);
+        applyPageLanguage(currentLang);
+        updateInstallmentLabels();
+        if (lastResult) {
+          renderResult(lastResult);
+        }
+      });
 
       function parseCurrency(value) {
         return Number(String(value).replace(/,/g, ""));
@@ -222,6 +286,18 @@
           .slice(0, 10);
       }
 
+      function updateInstallmentLabels() {
+        const labels = installmentDatesEl.querySelectorAll("label");
+        labels.forEach((label, index) => {
+          const input = label.querySelector('input[type="date"]');
+          label.textContent = "";
+          label.append(
+            t(currentLang, "installment", { n: index + 1 }),
+            input
+          );
+        });
+      }
+
       function buildInstallmentDates() {
         const count = Math.max(1, Number(form.installment_count.value) || 1);
         const startDate = form.pay_now_date.value;
@@ -229,13 +305,15 @@
         installmentDatesEl.replaceChildren();
         for (let i = 0; i < count; i++) {
           const label = document.createElement("label");
-          label.textContent = `Installment ${i + 1}`;
           const input = document.createElement("input");
           input.type = "date";
           input.name = `payment_date_${i}`;
           input.value = addMonths(startDate, i);
           input.required = true;
-          label.appendChild(input);
+          label.append(
+            t(currentLang, "installment", { n: i + 1 }),
+            input
+          );
           installmentDatesEl.appendChild(label);
         }
       }
@@ -287,9 +365,11 @@
       }
 
       function formatBetterOption(option) {
-        if (option === "pay_now") return "Pay Now is the better option";
-        if (option === "pay_later") return "Pay Later is the better option";
-        return "Both options are equal";
+        if (option === "pay_now") return t(currentLang, "resultPayNowBetter");
+        if (option === "pay_later") {
+          return t(currentLang, "resultPayLaterBetter");
+        }
+        return t(currentLang, "resultEqual");
       }
 
       function renderResult(data) {
@@ -302,20 +382,25 @@
 
         const payLaterDelta = data.gain_if_pay_later;
         const payLaterLabel =
-          payLaterDelta < 0 ? "Loss if pay later" : "Gain if pay later";
+          payLaterDelta < 0
+            ? t(currentLang, "lossIfPayLater")
+            : t(currentLang, "gainIfPayLater");
         const payLaterAmount = formatMoney(Math.abs(payLaterDelta));
+        const resultText = t(currentLang, "resultHeader", {
+          option: formatBetterOption(data.better_option),
+        });
 
         results.innerHTML = `
-          <h2>Result: ${formatBetterOption(data.better_option)}</h2>
-          <p><strong>Principal:</strong> $${formatMoney(data.principal)}</p>
-          <p><strong>Scholarship (${data.scholarship_pct}%):</strong> −$${formatMoney(data.scholarship_amount)}</p>
-          <p><strong>Amount compared:</strong> $${formatMoney(data.effective_principal)}</p>
-          <p><strong>PV if pay now:</strong> $${formatMoney(data.pv_pay_now)}</p>
-          <p><strong>PV if pay later:</strong> $${formatMoney(data.pv_pay_later)}</p>
-          <p><strong>${payLaterLabel}:</strong> $${payLaterAmount}</p>
-          <h3>Pay-later schedule</h3>
+          <h2>${resultText}</h2>
+          <p><strong>${t(currentLang, "principalResult")}</strong> $${formatMoney(data.principal)}</p>
+          <p><strong>${t(currentLang, "scholarshipResult", { pct: data.scholarship_pct })}</strong> −$${formatMoney(data.scholarship_amount)}</p>
+          <p><strong>${t(currentLang, "amountCompared")}</strong> $${formatMoney(data.effective_principal)}</p>
+          <p><strong>${t(currentLang, "pvPayNow")}</strong> $${formatMoney(data.pv_pay_now)}</p>
+          <p><strong>${t(currentLang, "pvPayLater")}</strong> $${formatMoney(data.pv_pay_later)}</p>
+          <p><strong>${payLaterLabel}</strong> $${payLaterAmount}</p>
+          <h3>${t(currentLang, "payLaterSchedule")}</h3>
           <table>
-            <thead><tr><th>Date</th><th>Amount</th></tr></thead>
+            <thead><tr><th>${t(currentLang, "tableDate")}</th><th>${t(currentLang, "tableAmount")}</th></tr></thead>
             <tbody>${scheduleRows}</tbody>
           </table>
           <pre>${JSON.stringify(data, null, 2)}</pre>
@@ -348,9 +433,15 @@
         }
 
         try {
-          renderResult(compareFromForm(payload));
+          lastResult = compareFromForm(payload);
+          renderResult(lastResult);
         } catch (error) {
-          results.innerHTML = `<p class="error">${error.message}</p>`;
+          lastResult = null;
+          const message =
+            error instanceof Error
+              ? translateError(currentLang, error.message)
+              : String(error);
+          results.innerHTML = `<p class="error">${message}</p>`;
         }
       });
     </script>
