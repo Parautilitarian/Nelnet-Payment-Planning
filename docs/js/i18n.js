@@ -213,6 +213,7 @@ const errorMessages = {
     "error.installmentAmountLength":
       "Installment amounts and dates must match in length.",
   },
+  "zh-Hans": {
     "error.installmentRequired": "至少需要一个分期付款日期。",
     "error.firstInstallmentBeforePayNow":
       "第一期不能早于一次性付款日期。第一期可以与一次性付款日期相同。",

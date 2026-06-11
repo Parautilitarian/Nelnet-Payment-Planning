@@ -71,6 +71,9 @@
         padding: 0;
         border: none;
       }
+      .installment-fieldset.hidden {
+        display: none;
+      }
       .installment-fieldset legend {
         font-weight: 600;
         padding: 0;
@@ -159,22 +162,23 @@
         <input type="date" name="pay_now_date" value="2026-08-01" required />
       </label>
 
+      <hr class="section-divider" />
+
       <label>
         <span data-i18n="installmentCount">Number of installments</span>
         <input
           type="number"
           name="installment_count"
-          value="4"
+          value=""
           min="1"
           max="36"
           step="1"
+          placeholder="4"
           required
         />
       </label>
 
-      <hr class="section-divider" />
-
-      <fieldset class="installment-fieldset">
+      <fieldset id="installment-fieldset" class="installment-fieldset hidden">
         <legend data-i18n="installmentDatesLegend">Installment dates</legend>
         <p class="hint" data-i18n="installmentDatesHint">
           First defaults to pay-now date; others are monthly. Amounts default to an even split.
@@ -273,6 +277,16 @@
       }
 
       const installmentDatesEl = document.getElementById("installment-dates");
+      const installmentFieldset = document.getElementById("installment-fieldset");
+
+      function getInstallmentCount() {
+        const count = Number(form.installment_count.value);
+        return Number.isFinite(count) && count >= 1 ? Math.floor(count) : 0;
+      }
+
+      function setInstallmentSectionVisible(visible) {
+        installmentFieldset.classList.toggle("hidden", !visible);
+      }
 
       function getEffectivePrincipal() {
         const principal = parseCurrency(form.principal.value);
@@ -349,7 +363,14 @@
       }
 
       function buildInstallmentDates() {
-        const count = Math.max(1, Number(form.installment_count.value) || 1);
+        const count = getInstallmentCount();
+        if (!count) {
+          installmentDatesEl.replaceChildren();
+          setInstallmentSectionVisible(false);
+          return;
+        }
+
+        setInstallmentSectionVisible(true);
         const startDate = form.pay_now_date.value;
         const amounts = evenSplitAmounts(count, getEffectivePrincipal());
 
@@ -374,11 +395,15 @@
       }
 
       function syncInstallmentDates() {
-        const count = Math.max(1, Number(form.installment_count.value) || 1);
+        const count = getInstallmentCount();
+        if (!count) {
+          return;
+        }
+
         const payNowDate = form.pay_now_date.value;
         const dateInputs = installmentDatesEl.querySelectorAll('input[type="date"]');
 
-        if (!dateInputs.length) {
+        if (dateInputs.length !== count) {
           buildInstallmentDates();
           return;
         }
@@ -395,10 +420,12 @@
       }
 
       function redistributeDefaultAmounts() {
-        const amounts = evenSplitAmounts(
-          Math.max(1, Number(form.installment_count.value) || 1),
-          getEffectivePrincipal()
-        );
+        const count = getInstallmentCount();
+        if (!count) {
+          return;
+        }
+
+        const amounts = evenSplitAmounts(count, getEffectivePrincipal());
         const amountInputs = installmentDatesEl.querySelectorAll(
           'input[name^="payment_amount_"]'
         );
@@ -410,6 +437,7 @@
       }
 
       form.installment_count.addEventListener("input", buildInstallmentDates);
+      form.installment_count.addEventListener("change", buildInstallmentDates);
       form.pay_now_date.addEventListener("input", syncInstallmentDates);
       form.pay_now_date.addEventListener("change", syncInstallmentDates);
       form.scholarship_pct.addEventListener("input", redistributeDefaultAmounts);
