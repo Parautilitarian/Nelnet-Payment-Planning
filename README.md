@@ -33,17 +33,19 @@ You can change any input and click **Compare** again to see how the answer shift
 
 ## What each field means
 
-| Field | Plain English |
-|-------|---------------|
-| **Principal** | Total tuition (or balance) before scholarship. Default: $34,940. Accepts comma formatting (e.g. `34,940`). |
-| **Scholarship (%)** | Portion of tuition covered by aid. That amount is subtracted before comparing options. |
-| **Pay-now date** | The date you would pay in full if you chose that route. Also used as the "today" reference for all math. Default: August 1, 2026. |
-| **Number of installments** | How many payments the Nelnet plan splits into (1–36). Enter a number to reveal the installment rows below. |
+
+| Field                         | Plain English                                                                                                                                                                                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Principal**                 | Total tuition (or balance) before scholarship. Default: $34,940. Accepts comma formatting (e.g. `34,940`).                                                                                                                                                                 |
+| **Scholarship (%)**           | Portion of tuition covered by aid. That amount is subtracted before comparing options.                                                                                                                                                                                     |
+| **Pay-now date**              | The date you would pay in full if you chose that route. Also used as the "today" reference for all math. Default: August 1, 2026.                                                                                                                                          |
+| **Number of installments**    | How many payments the Nelnet plan splits into (1–36). Enter a number to reveal the installment rows below.                                                                                                                                                                 |
 | **Installment date / amount** | One row per payment. **Date** defaults to pay-now date for the first installment, then monthly. **Amount** is the **principal portion only** — plan interest is calculated and added on top (see below). Amounts default to an even split of the post-scholarship balance. |
-| **Discount rate (%)** | What you could earn if you kept the money invested instead of paying early — e.g. a high-yield savings rate. Default: 3.75%. |
-| **Plan interest rate (%)** | Interest charged by the payment plan on your **outstanding balance** between installment dates. Paid together with each installment. Default: 0% (many school plans charge no interest). |
-| **Setup fee ($)** | One-time fee to enroll in the plan. Default: $40. |
-| **Setup fee date** | When the setup fee is charged. Leave blank to charge it on the pay-now date. |
+| **Discount rate (%)**         | What you could earn if you kept the money invested instead of paying early — e.g. a high-yield savings rate. Default: 3.75%.                                                                                                                                               |
+| **Plan interest rate (%)**    | Interest charged by the payment plan on your **outstanding balance** between installment dates. Paid together with each installment. Default: 0% (many school plans charge no interest).                                                                                   |
+| **Setup fee ($)**             | One-time fee to enroll in the plan. Default: $40.                                                                                                                                                                                                                          |
+| **Setup fee date**            | When the setup fee is charged. Leave blank to charge it on the pay-now date.                                                                                                                                                                                               |
+
 
 The form is grouped into three sections separated by horizontal lines: basic info → installments → rates & fees.
 
@@ -51,16 +53,18 @@ The form is grouped into three sections separated by horizontal lines: basic inf
 
 ## How to read the results
 
-| Result | Meaning |
-|--------|---------|
-| **Result: Pay Now / Pay Later is the better option** | The recommended choice based on present value (see below). |
-| **Principal / Scholarship / Amount compared** | Your tuition, aid, and the balance actually being compared. |
-| **PV if pay now** | What paying in full "costs" in today's dollars. |
-| **PV if pay later** | What the installment plan "costs" in today's dollars. |
-| **Gain if pay later** | How much you save (in today's dollars) by choosing the plan — shown when the plan wins. |
-| **Loss if pay later** | How much the plan costs you extra (in today's dollars) vs paying in full — shown when pay-now wins. |
-| **Total interest accrued** | Sum of all plan interest charged on the outstanding balance across installments (excludes setup fee). |
-| **Pay-later schedule** | Each payment date and **total amount due** (principal + interest for that period). Same-day charges (e.g. setup fee + first installment) are combined into one row. |
+
+| Result                                               | Meaning                                                                                                                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Result: Pay Now / Pay Later is the better option** | The recommended choice based on present value (see below).                                                                                                          |
+| **Principal / Scholarship / Amount compared**        | Your tuition, aid, and the balance actually being compared.                                                                                                         |
+| **PV if pay now**                                    | What paying in full "costs" in today's dollars.                                                                                                                     |
+| **PV if pay later**                                  | What the installment plan "costs" in today's dollars.                                                                                                               |
+| **Gain if pay later**                                | How much you save (in today's dollars) by choosing the plan — shown when the plan wins.                                                                             |
+| **Loss if pay later**                                | How much the plan costs you extra (in today's dollars) vs paying in full — shown when pay-now wins.                                                                 |
+| **Total interest accrued**                           | Sum of all plan interest charged on the outstanding balance across installments (excludes setup fee).                                                               |
+| **Pay-later schedule**                               | Each payment date and **total amount due** (principal + interest for that period). Same-day charges (e.g. setup fee + first installment) are combined into one row. |
+
 
 ### Why "lower PV" wins
 
@@ -80,7 +84,7 @@ So the option with the **lower PV** is the better deal economically — it's lik
 For each installment, the calculator:
 
 1. Accrues interest on the **remaining balance** since the previous payment date:
-   `interest = outstanding balance × plan rate × (days ÷ 365)`
+  `interest = outstanding balance × plan rate × (days ÷ 365)`
 2. Adds that interest to the installment's **principal amount** for the payment due that day.
 3. Reduces the outstanding balance by the principal portion only.
 
@@ -90,7 +94,7 @@ The **Amount ($)** fields you enter are principal only. The pay-later schedule a
 
 ## What the calculator assumes
 
-All calculation logic lives in [`docs/js/payment-comparison.js`](docs/js/payment-comparison.js):
+All calculation logic lives in `[docs/js/payment-comparison.js](docs/js/payment-comparison.js)`:
 
 1. **Scholarship** reduces the balance before any comparison.
 2. **Pay in full** = one payment of the full (post-scholarship) balance on the pay-now date.
@@ -99,7 +103,7 @@ All calculation logic lives in [`docs/js/payment-comparison.js`](docs/js/payment
 5. Installment principal amounts must sum to the amount compared (before interest).
 6. Both options are compared using the same discount rate, as of the pay-now date.
 
-UI text and error messages are translated via [`docs/js/i18n.js`](docs/js/i18n.js).
+UI text and error messages are translated via `[docs/js/i18n.js](docs/js/i18n.js)`.
 
 This is a planning tool, not official financial advice. Always confirm amounts and dates with your school and Nelnet.
 
@@ -107,12 +111,14 @@ This is a planning tool, not official financial advice. Always confirm amounts a
 
 ## Project layout
 
-| Path | Purpose |
-|------|---------|
-| [`docs/index.html`](docs/index.html) | The web page students use |
-| [`docs/js/payment-comparison.js`](docs/js/payment-comparison.js) | Calculation logic |
-| [`docs/js/i18n.js`](docs/js/i18n.js) | Translations (EN, 简体中文, 繁體中文, ES) |
-| [`static/index.html`](static/index.html) | Legacy redirect — not used for hosting |
+
+| Path                                                             | Purpose                                |
+| ---------------------------------------------------------------- | -------------------------------------- |
+| `[docs/index.html](docs/index.html)`                             | The web page students use              |
+| `[docs/js/payment-comparison.js](docs/js/payment-comparison.js)` | Calculation logic                      |
+| `[docs/js/i18n.js](docs/js/i18n.js)`                             | Translations (EN, 简体中文, 繁體中文, ES)      |
+| `[static/index.html](static/index.html)`                         | Legacy redirect — not used for hosting |
+
 
 ---
 
@@ -132,9 +138,8 @@ Then open [http://localhost:8080](http://localhost:8080).
 1. Push this repo to GitHub.
 2. Go to **Settings → Pages**.
 3. Set **Source** to **Deploy from a branch**.
-4. Choose branch **`main`** and folder **`/docs`**.
+4. Choose branch `**main`** and folder `**/docs**`.
 5. Save. The site will be live at:
-
-   `https://<your-username>.github.io/<repo-name>/`
+  `https://<your-username>.github.io/<repo-name>/`
 
 GitHub Pages serves static files only — the calculator runs entirely in the browser.
