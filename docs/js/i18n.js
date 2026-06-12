@@ -20,9 +20,10 @@ export const strings = {
     payNowDate: "Pay-now date",
     installmentCount: "Number of installments",
     installmentDatesLegend: "Installment dates",
-    installmentDatesHint: "First defaults to pay-now date; others are monthly. Amounts default to an even split.",
+    installmentDatesHint: "First defaults to pay-now date; others are monthly. Amounts are principal only — plan interest is added to each payment.",
     installmentDate: "Date",
     installmentAmount: "Amount ($)",
+    installmentAmountHint: "Principal portion per installment (plan interest is added on top)",
     discountRate: "Discount rate (%)",
     discountRateHint: "Your opportunity-cost / risk-free rate",
     planInterestRate: "Plan interest rate (%)",
@@ -59,9 +60,10 @@ export const strings = {
     payNowDate: "一次性付款日期",
     installmentCount: "分期期数",
     installmentDatesLegend: "各期付款日期",
-    installmentDatesHint: "第一期默认为一次性付款日期；其余按月递增。金额默认为平均分配。",
+    installmentDatesHint: "第一期默认为一次性付款日期；其余按月递增。金额为每期本金，计划利息另计。",
     installmentDate: "日期",
     installmentAmount: "金额 ($)",
+    installmentAmountHint: "每期本金（计划利息另计并加入该期付款）",
     discountRate: "贴现率 (%)",
     discountRateHint: "您的机会成本 / 无风险收益率",
     planInterestRate: "分期计划利率 (%)",
@@ -98,9 +100,10 @@ export const strings = {
     payNowDate: "一次性付款日期",
     installmentCount: "分期期數",
     installmentDatesLegend: "各期付款日期",
-    installmentDatesHint: "第一期預設為一次性付款日期；其餘按月遞增。金額預設為平均分配。",
+    installmentDatesHint: "第一期預設為一次性付款日期；其餘按月遞增。金額為每期本金，計劃利息另計。",
     installmentDate: "日期",
     installmentAmount: "金額 ($)",
+    installmentAmountHint: "每期本金（計劃利息另計並加入該期付款）",
     discountRate: "貼現率 (%)",
     discountRateHint: "您的機會成本 / 無風險收益率",
     planInterestRate: "分期計劃利率 (%)",
@@ -139,9 +142,10 @@ export const strings = {
     installmentCount: "Número de cuotas",
     installmentDatesLegend: "Fechas de las cuotas",
     installmentDatesHint:
-      "La primera coincide con la fecha de pago completo; las demás son mensuales. Los montos se dividen en partes iguales por defecto.",
+      "La primera coincide con la fecha de pago completo; las demás son mensuales. Los montos son solo principal; el interés del plan se suma a cada pago.",
     installmentDate: "Fecha",
     installmentAmount: "Monto ($)",
+    installmentAmountHint: "Porción de principal por cuota (el interés del plan se suma al pago)",
     discountRate: "Tasa de descuento (%)",
     discountRateHint: "Su costo de oportunidad / tasa libre de riesgo",
     planInterestRate: "Tasa de interés del plan (%)",
@@ -187,6 +191,8 @@ export const errorStrings = {
     "error.scholarshipZeroPrincipal",
   "Installment amounts and dates must match in length.":
     "error.installmentAmountLength",
+  "Installment amounts must sum to the amount compared (before interest).":
+    "error.installmentAmountSum",
 };
 
 /** @type {Record<string, Record<string, string>>} */
@@ -212,6 +218,8 @@ const errorMessages = {
       "Scholarship leaves no principal to compare.",
     "error.installmentAmountLength":
       "Installment amounts and dates must match in length.",
+    "error.installmentAmountSum":
+      "Installment amounts must sum to the amount compared (before interest).",
   },
   "zh-Hans": {
     "error.installmentRequired": "至少需要一个分期付款日期。",
@@ -232,6 +240,7 @@ const errorMessages = {
     "error.scholarshipRange": "奖学金比例须在 0% 至 100% 之间。",
     "error.scholarshipZeroPrincipal": "奖学金扣除后没有可比较的金额。",
     "error.installmentAmountLength": "分期金额和日期的数量必须一致。",
+    "error.installmentAmountSum": "分期金额之和须等于比较金额（不含利息）。",
   },
   "zh-Hant": {
     "error.installmentRequired": "至少需要一個分期付款日期。",
@@ -252,6 +261,7 @@ const errorMessages = {
     "error.scholarshipRange": "獎學金比例須在 0% 至 100% 之間。",
     "error.scholarshipZeroPrincipal": "獎學金扣除後沒有可比較的金額。",
     "error.installmentAmountLength": "分期金額和日期的數量必須一致。",
+    "error.installmentAmountSum": "分期金額之和須等於比較金額（不含利息）。",
   },
   es: {
     "error.installmentRequired": "Se requiere al menos una fecha de cuota.",
@@ -274,6 +284,8 @@ const errorMessages = {
       "La beca deja ningún principal para comparar.",
     "error.installmentAmountLength":
       "Los montos y fechas de las cuotas deben coincidir en cantidad.",
+    "error.installmentAmountSum":
+      "Los montos de las cuotas deben sumar el monto comparado (sin intereses).",
   },
 };
 

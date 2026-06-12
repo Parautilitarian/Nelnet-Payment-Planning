@@ -81,14 +81,6 @@
       .installment-fieldset .hint {
         margin: 0.25rem 0 0;
       }
-      .installment-dates label {
-        display: block;
-        margin-top: 0.75rem;
-        font-weight: 600;
-      }
-      .installment-dates label:first-child {
-        margin-top: 0.25rem;
-      }
       .installment-row {
         margin-top: 0.75rem;
       }
@@ -99,12 +91,19 @@
       .installment-row-fields {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
+        column-gap: 0.75rem;
+        row-gap: 0.25rem;
       }
-      .installment-row-fields label {
-        margin-top: 0;
+      .installment-field-label {
+        display: block;
+        margin: 0;
         font-weight: 600;
         font-size: 0.9rem;
+      }
+      .installment-row-fields input {
+        margin-top: 0;
+        width: 100%;
+        min-height: 2.375rem;
       }
       @media (max-width: 520px) {
         .installment-row-fields {
@@ -181,7 +180,7 @@
       <fieldset id="installment-fieldset" class="installment-fieldset hidden">
         <legend data-i18n="installmentDatesLegend">Installment dates</legend>
         <p class="hint" data-i18n="installmentDatesHint">
-          First defaults to pay-now date; others are monthly. Amounts default to an even split.
+          First defaults to pay-now date; others are monthly. Amounts are principal only — plan interest is added to each payment.
         </p>
         <div id="installment-dates" class="installment-dates"></div>
       </fieldset>
@@ -322,23 +321,31 @@
         fields.className = "installment-row-fields";
 
         const dateLabel = document.createElement("label");
+        dateLabel.className = "installment-field-label";
+        dateLabel.htmlFor = `payment_date_${index}`;
+        dateLabel.textContent = t(currentLang, "installmentDate");
+
+        const amountLabel = document.createElement("label");
+        amountLabel.className = "installment-field-label";
+        amountLabel.htmlFor = `payment_amount_${index}`;
+        amountLabel.textContent = t(currentLang, "installmentAmount");
+
         const dateInput = document.createElement("input");
         dateInput.type = "date";
+        dateInput.id = `payment_date_${index}`;
         dateInput.name = `payment_date_${index}`;
         dateInput.value = dateValue;
         dateInput.required = true;
-        dateLabel.append(t(currentLang, "installmentDate"), dateInput);
 
-        const amountLabel = document.createElement("label");
         const amountInput = document.createElement("input");
         amountInput.type = "text";
+        amountInput.id = `payment_amount_${index}`;
         amountInput.name = `payment_amount_${index}`;
         amountInput.inputMode = "decimal";
         amountInput.value = formatCurrency(amountValue);
         amountInput.required = true;
-        amountLabel.append(t(currentLang, "installmentAmount"), amountInput);
 
-        fields.append(dateLabel, amountLabel);
+        fields.append(dateLabel, amountLabel, dateInput, amountInput);
         row.append(title, fields);
         return row;
       }
@@ -347,17 +354,13 @@
         const rows = installmentDatesEl.querySelectorAll(".installment-row");
         rows.forEach((row, index) => {
           const title = row.querySelector(".installment-row-title");
-          const labels = row.querySelectorAll(".installment-row-fields label");
+          const labels = row.querySelectorAll(".installment-field-label");
           title.textContent = t(currentLang, "installment", { n: index + 1 });
           if (labels[0]) {
-            const dateInput = labels[0].querySelector("input");
-            labels[0].textContent = "";
-            labels[0].append(t(currentLang, "installmentDate"), dateInput);
+            labels[0].textContent = t(currentLang, "installmentDate");
           }
           if (labels[1]) {
-            const amountInput = labels[1].querySelector("input");
-            labels[1].textContent = "";
-            labels[1].append(t(currentLang, "installmentAmount"), amountInput);
+            labels[1].textContent = t(currentLang, "installmentAmount");
           }
         });
       }

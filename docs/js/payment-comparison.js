@@ -36,17 +36,6 @@ export function validatePaymentDates(paymentDates, payNowDate) {
   }
 }
 
-/** @param {Date[]} flowDates @param {Date} payNowDate @param {string} label */
-function validateFlowDates(flowDates, payNowDate, label) {
-  for (const [index, flowDate] of flowDates.entries()) {
-    if (isBefore(flowDate, payNowDate)) {
-      throw new Error(
-        `${label} date ${index + 1} cannot be before the pay-now date.`
-      );
-    }
-  }
-}
-
 /** @param {number} amount @param {Date} flowDate @param {Date} valuationDate @param {number} annualRate */
 export function pvCashFlow(amount, flowDate, valuationDate, annualRate) {
   if (isBefore(flowDate, valuationDate)) {
@@ -80,6 +69,7 @@ export function payNowPv(principal, payDate, valuationDate, annualRate) {
  * @param {number} [setupFee]
  * @param {Date | null} [setupFeeDate]
  * @param {Date | null} [valuationDate]
+ * @param {number[] | null} [principalAmounts] Principal portion per installment (interest added on top)
  * @returns {{ amounts: number[], dates: Date[] }}
  */
 export function buildPayLaterSchedule(
@@ -88,12 +78,48 @@ export function buildPayLaterSchedule(
   annualInterestRate,
   setupFee = 0,
   setupFeeDate = null,
-  valuationDate = null
+  valuationDate = null,
+  principalAmounts = null
 ) {
   const valDate = valuationDate ?? paymentDates[0];
   validatePaymentDates(paymentDates, valDate);
 
-  const sortedDates = [...paymentDates].sort((a, b) => a - b);
+  if (principalAmounts?.length) {
+    if (principalAmounts.length !== paymentDates.length) {
+      throw new Error(
+        "Installment amounts and dates must match in length."
+      );
+    }
+    const principalSum = principalAmounts.reduce((total, amount) => total + amount, 0);
+    if (Math.abs(principalSum - principal) > 0.01) {
+      throw new Error(
+        "Installment amounts must sum to the amount compared (before interest)."
+      );
+    }
+  }
+
+  /** @type {{ date: Date, principal: number }[]} */
+  const installments = paymentDates.map((date, index) => ({
+    date,
+    principal: principalAmounts
+      ? principalAmounts[index]
+      : principal / paymentDates.length,
+  }));
+  installments.sort((a, b) => a.date - b.date);
+
+  if (!principalAmounts) {
+    const perPayment = principal / installments.length;
+    let allocated = 0;
+    for (let i = 0; i < installments.length; i++) {
+      if (i === installments.length - 1) {
+        installments[i].principal = Math.round((principal - allocated) * 100) / 100;
+      } else {
+        installments[i].principal = Math.round(perPayment * 100) / 100;
+        allocated += installments[i].principal;
+      }
+    }
+  }
+
   const feeDate = setupFeeDate ?? valDate;
   if (setupFee && isBefore(feeDate, valDate)) {
     throw new Error("Setup fee date cannot be before the pay-now date.");
@@ -110,31 +136,41 @@ export function buildPayLaterSchedule(
   }
 
   let remaining = principal;
-  const principalPerPayment = principal / sortedDates.length;
   let prevDate = valDate;
 
-  for (const payDate of sortedDates) {
+  for (const { date: payDate, principal: principalPortion } of installments) {
     const interest =
       remaining * annualInterestRate * yearFraction(prevDate, payDate);
-    amounts.push(interest + principalPerPayment);
+    amounts.push(
+      Math.round((principalPortion + interest) * 100) / 100
+    );
     dates.push(payDate);
-    remaining -= principalPerPayment;
+    remaining -= principalPortion;
     prevDate = payDate;
   }
 
   return { amounts, dates };
 }
 
-/** @param {number[]} amounts @param {Date[]} dates @param {number} setupFee @param {Date | null} setupFeeDate @param {Date} valuationDate */
-function withSetupFee(amounts, dates, setupFee, setupFeeDate, valuationDate) {
-  if (!setupFee) {
-    return { amounts, dates };
-  }
-  const feeDate = setupFeeDate ?? valuationDate;
-  return {
-    amounts: [setupFee, ...amounts],
-    dates: [feeDate, ...dates],
-  };
+/** @param {object} params */
+function resolvePayLaterSchedule({
+  principal,
+  paymentDates,
+  valuationDate,
+  annualInterestRate,
+  setupFee = 0,
+  setupFeeDate = null,
+  principalAmounts = null,
+}) {
+  return buildPayLaterSchedule(
+    principal,
+    paymentDates,
+    annualInterestRate,
+    setupFee,
+    setupFeeDate,
+    valuationDate,
+    principalAmounts
+  );
 }
 
 /**
@@ -146,8 +182,7 @@ function withSetupFee(amounts, dates, setupFee, setupFeeDate, valuationDate) {
  * @param {number} params.annualInterestRate
  * @param {number} [params.setupFee]
  * @param {Date | null} [params.setupFeeDate]
- * @param {number[] | null} [params.amounts]
- * @param {Date[] | null} [params.flowDates]
+ * @param {number[] | null} [params.principalAmounts]
  */
 export function payLaterPv({
   principal,
@@ -157,36 +192,19 @@ export function payLaterPv({
   annualInterestRate,
   setupFee = 0,
   setupFeeDate = null,
-  amounts = null,
-  flowDates = null,
+  principalAmounts = null,
 }) {
-  let scheduleAmounts = amounts;
-  let scheduleDates = flowDates;
+  const { amounts, dates } = resolvePayLaterSchedule({
+    principal,
+    paymentDates,
+    valuationDate,
+    annualInterestRate,
+    setupFee,
+    setupFeeDate,
+    principalAmounts,
+  });
 
-  if (scheduleAmounts === null || scheduleDates === null) {
-    const built = buildPayLaterSchedule(
-      principal,
-      paymentDates,
-      annualInterestRate,
-      setupFee,
-      setupFeeDate,
-      valuationDate
-    );
-    scheduleAmounts = built.amounts;
-    scheduleDates = built.dates;
-  } else {
-    const withFee = withSetupFee(
-      scheduleAmounts,
-      scheduleDates,
-      setupFee,
-      setupFeeDate,
-      valuationDate
-    );
-    scheduleAmounts = withFee.amounts;
-    scheduleDates = withFee.dates;
-  }
-
-  return pvCashFlows(scheduleAmounts, scheduleDates, valuationDate, discountRate);
+  return pvCashFlows(amounts, dates, valuationDate, discountRate);
 }
 
 /**
@@ -199,8 +217,7 @@ export function payLaterPv({
  * @param {number} params.annualInterestRate
  * @param {number} [params.setupFee]
  * @param {Date | null} [params.setupFeeDate]
- * @param {number[] | null} [params.payLaterAmounts]
- * @param {Date[] | null} [params.payLaterDates]
+ * @param {number[] | null} [params.principalAmounts]
  */
 export function comparePayNowVsLater({
   principal,
@@ -211,8 +228,7 @@ export function comparePayNowVsLater({
   annualInterestRate,
   setupFee = 0,
   setupFeeDate = null,
-  payLaterAmounts = null,
-  payLaterDates = null,
+  principalAmounts = null,
 }) {
   const pvNow = payNowPv(principal, payNowDate, valuationDate, discountRate);
   const pvLater = payLaterPv({
@@ -223,37 +239,22 @@ export function comparePayNowVsLater({
     annualInterestRate,
     setupFee,
     setupFeeDate,
-    amounts: payLaterAmounts,
-    flowDates: payLaterDates,
+    principalAmounts,
   });
 
   const gainIfPayNow = pvLater - pvNow;
   const gainIfPayLater = pvNow - pvLater;
 
-  let scheduleAmounts = payLaterAmounts;
-  let scheduleDates = payLaterDates;
-  if (scheduleAmounts === null || scheduleDates === null) {
-    const built = buildPayLaterSchedule(
+  const { amounts: scheduleAmounts, dates: scheduleDates } =
+    resolvePayLaterSchedule({
       principal,
       paymentDates,
+      valuationDate,
       annualInterestRate,
       setupFee,
       setupFeeDate,
-      valuationDate
-    );
-    scheduleAmounts = built.amounts;
-    scheduleDates = built.dates;
-  } else {
-    const withFee = withSetupFee(
-      scheduleAmounts,
-      scheduleDates,
-      setupFee,
-      setupFeeDate,
-      valuationDate
-    );
-    scheduleAmounts = withFee.amounts;
-    scheduleDates = withFee.dates;
-  }
+      principalAmounts,
+    });
 
   return {
     valuation_date: formatDate(valuationDate),
@@ -327,19 +328,17 @@ export function compareFromForm(input) {
   }
 
   const installmentAmounts = input.installment_amounts ?? null;
-  const installmentDates = input.payment_dates.map(parseDate);
 
   const result = comparePayNowVsLater({
     principal: effectivePrincipal,
     payNowDate,
-    paymentDates: installmentDates,
+    paymentDates,
     valuationDate: payNowDate,
     discountRate: input.discount_rate,
     annualInterestRate: input.annual_interest_rate,
     setupFee: input.setup_fee ?? 0,
     setupFeeDate: input.setup_fee_date ? parseDate(input.setup_fee_date) : null,
-    payLaterAmounts: installmentAmounts,
-    payLaterDates: installmentAmounts ? installmentDates : null,
+    principalAmounts: installmentAmounts,
   });
 
   return {
