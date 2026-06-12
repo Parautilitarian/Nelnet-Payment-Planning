@@ -105,6 +105,10 @@
         width: 100%;
         min-height: 2.375rem;
       }
+      .installment-amount-auto {
+        background: #f5f5f5;
+        cursor: default;
+      }
       @media (max-width: 520px) {
         .installment-row-fields {
           grid-template-columns: 1fr;
@@ -151,7 +155,7 @@
           value="0"
           min="0"
           max="100"
-          step="0.01"
+          step="1"
           required
         />
       </label>
@@ -180,7 +184,7 @@
       <fieldset id="installment-fieldset" class="installment-fieldset hidden">
         <legend data-i18n="installmentDatesLegend">Installment dates</legend>
         <p class="hint" data-i18n="installmentDatesHint">
-          First defaults to pay-now date; others are monthly. Amounts are principal only — plan interest is added to each payment.
+          First defaults to pay-now date; others are monthly. Amounts are principal only — plan interest is added to each payment. The last installment auto-fills with any remaining principal.
         </p>
         <div id="installment-dates" class="installment-dates"></div>
       </fieldset>
@@ -275,6 +279,22 @@
         return num.toLocaleString("en-US", { maximumFractionDigits: 2 });
       }
 
+      function formatInstallmentAmount(value) {
+        const num = Number(value);
+        if (Number.isNaN(num)) return "";
+        return num.toFixed(2);
+      }
+
+      function bindInstallmentAmountInput(input) {
+        const normalize = () => {
+          if (input.value !== "") {
+            input.value = formatInstallmentAmount(input.value);
+          }
+        };
+        input.addEventListener("blur", normalize);
+        input.addEventListener("change", normalize);
+      }
+
       const installmentDatesEl = document.getElementById("installment-dates");
       const installmentFieldset = document.getElementById("installment-fieldset");
 
@@ -293,13 +313,41 @@
         return principal * (1 - scholarshipPct / 100);
       }
 
-      function evenSplitAmounts(count, total) {
-        if (count <= 0) return [];
-        const per = Math.round((total / count) * 100) / 100;
-        const amounts = Array.from({ length: count }, () => per);
-        amounts[count - 1] =
-          Math.round((total - per * (count - 1)) * 100) / 100;
-        return amounts;
+      function getInstallmentAmountInputs() {
+        return [
+          ...installmentDatesEl.querySelectorAll('input[name^="payment_amount_"]'),
+        ];
+      }
+
+      function syncLastInstallmentAmount() {
+        const count = getInstallmentCount();
+        const amountInputs = getInstallmentAmountInputs();
+        if (!count || amountInputs.length !== count) {
+          return;
+        }
+
+        const effectivePrincipal = getEffectivePrincipal();
+        const lastInput = amountInputs[count - 1];
+
+        if (count === 1) {
+          lastInput.value = formatInstallmentAmount(effectivePrincipal);
+          return;
+        }
+
+        const otherSum = amountInputs
+          .slice(0, -1)
+          .reduce((sum, input) => sum + Number(input.value || 0), 0);
+        const remainder =
+          Math.round((effectivePrincipal - otherSum) * 100) / 100;
+
+        lastInput.value = formatInstallmentAmount(Math.max(0, remainder));
+      }
+
+      function defaultEvenAmount(count, total) {
+        if (count <= 1) {
+          return total;
+        }
+        return Math.round((total / count) * 100) / 100;
       }
 
       function addMonths(isoDate, months) {
@@ -309,7 +357,7 @@
           .slice(0, 10);
       }
 
-      function createInstallmentRow(index, dateValue, amountValue) {
+      function createInstallmentRow(index, dateValue, amountValue, autoAmount = false) {
         const row = document.createElement("div");
         row.className = "installment-row";
 
@@ -338,12 +386,18 @@
         dateInput.required = true;
 
         const amountInput = document.createElement("input");
-        amountInput.type = "text";
+        amountInput.type = "number";
         amountInput.id = `payment_amount_${index}`;
         amountInput.name = `payment_amount_${index}`;
-        amountInput.inputMode = "decimal";
-        amountInput.value = formatCurrency(amountValue);
+        amountInput.min = "0";
+        amountInput.step = "1";
+        amountInput.value = formatInstallmentAmount(amountValue);
         amountInput.required = true;
+        if (autoAmount) {
+          amountInput.readOnly = true;
+          amountInput.classList.add("installment-amount-auto");
+        }
+        bindInstallmentAmountInput(amountInput);
 
         fields.append(dateLabel, amountLabel, dateInput, amountInput);
         row.append(title, fields);
@@ -375,14 +429,22 @@
 
         setInstallmentSectionVisible(true);
         const startDate = form.pay_now_date.value;
-        const amounts = evenSplitAmounts(count, getEffectivePrincipal());
+        const total = getEffectivePrincipal();
+        const evenAmount = defaultEvenAmount(count, total);
 
         installmentDatesEl.replaceChildren();
         for (let i = 0; i < count; i++) {
+          const isLast = i === count - 1;
           installmentDatesEl.appendChild(
-            createInstallmentRow(i, addMonths(startDate, i), amounts[i])
+            createInstallmentRow(
+              i,
+              addMonths(startDate, i),
+              isLast ? 0 : evenAmount,
+              isLast
+            )
           );
         }
+        syncLastInstallmentAmount();
       }
 
       function getPaymentDates() {
@@ -393,7 +455,7 @@
 
       function getInstallmentAmounts() {
         return [...installmentDatesEl.querySelectorAll('input[name^="payment_amount_"]')]
-          .map((input) => parseCurrency(input.value))
+          .map((input) => Number(input.value))
           .filter((value) => !Number.isNaN(value));
       }
 
@@ -428,16 +490,32 @@
           return;
         }
 
-        const amounts = evenSplitAmounts(count, getEffectivePrincipal());
-        const amountInputs = installmentDatesEl.querySelectorAll(
-          'input[name^="payment_amount_"]'
-        );
-        amountInputs.forEach((input, index) => {
-          if (amounts[index] !== undefined) {
-            input.value = formatCurrency(amounts[index]);
+        const amountInputs = getInstallmentAmountInputs();
+        const evenAmount = defaultEvenAmount(count, getEffectivePrincipal());
+
+        for (let i = 0; i < count - 1; i++) {
+          if (amountInputs[i]) {
+            amountInputs[i].value = formatInstallmentAmount(evenAmount);
           }
-        });
+        }
+        syncLastInstallmentAmount();
       }
+
+      function handleInstallmentAmountChange(event) {
+        const target = event.target;
+        if (!target.name?.startsWith("payment_amount_")) {
+          return;
+        }
+
+        const amountInputs = getInstallmentAmountInputs();
+        const index = amountInputs.indexOf(target);
+        if (index >= 0 && index < amountInputs.length - 1) {
+          syncLastInstallmentAmount();
+        }
+      }
+
+      installmentDatesEl.addEventListener("input", handleInstallmentAmountChange);
+      installmentDatesEl.addEventListener("change", handleInstallmentAmountChange);
 
       form.installment_count.addEventListener("input", buildInstallmentDates);
       form.installment_count.addEventListener("change", buildInstallmentDates);
