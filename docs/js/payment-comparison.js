@@ -137,10 +137,12 @@ export function buildPayLaterSchedule(
 
   let remaining = principal;
   let prevDate = valDate;
+  let totalInterestAccrued = 0;
 
   for (const { date: payDate, principal: principalPortion } of installments) {
     const interest =
       remaining * annualInterestRate * yearFraction(prevDate, payDate);
+    totalInterestAccrued += interest;
     amounts.push(
       Math.round((principalPortion + interest) * 100) / 100
     );
@@ -149,7 +151,11 @@ export function buildPayLaterSchedule(
     prevDate = payDate;
   }
 
-  return { amounts, dates };
+  return {
+    amounts,
+    dates,
+    totalInterestAccrued: Math.round(totalInterestAccrued * 100) / 100,
+  };
 }
 
 /** @param {object} params */
@@ -245,7 +251,7 @@ export function comparePayNowVsLater({
   const gainIfPayNow = pvLater - pvNow;
   const gainIfPayLater = pvNow - pvLater;
 
-  const { amounts: scheduleAmounts, dates: scheduleDates } =
+  const { amounts: scheduleAmounts, dates: scheduleDates, totalInterestAccrued } =
     resolvePayLaterSchedule({
       principal,
       paymentDates,
@@ -265,6 +271,7 @@ export function comparePayNowVsLater({
     gain_if_pay_later: gainIfPayLater,
     better_option:
       gainIfPayNow > 0 ? "pay_now" : gainIfPayLater > 0 ? "pay_later" : "tie",
+    total_interest_accrued: totalInterestAccrued,
     pay_later_schedule: combineScheduleByDate(scheduleAmounts, scheduleDates),
   };
 }
