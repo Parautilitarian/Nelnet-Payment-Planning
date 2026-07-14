@@ -390,7 +390,7 @@
         amountInput.id = `payment_amount_${index}`;
         amountInput.name = `payment_amount_${index}`;
         amountInput.min = "0";
-        amountInput.step = "1";
+        amountInput.step = "0.01";
         amountInput.value = formatInstallmentAmount(amountValue);
         amountInput.required = true;
         if (autoAmount) {
